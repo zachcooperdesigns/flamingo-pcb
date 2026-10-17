@@ -26,6 +26,7 @@ import { exportStep, exportStepDetail } from './step.js';
 import { parseObjMesh, placeMeshGroups } from './objmesh.js';
 import type { MeshGroup } from './objmesh.js';
 import { BOARD_T } from './viewer3d.js';
+import { ACCESSORY_OBJ_RE, loadAccessories, loadAccessoryObj } from './accessories.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // packages/server/dist/http.js -> packages/ui/dist
@@ -254,6 +255,26 @@ async function collectDetailModels(board: Board): Promise<Map<string, MeshGroup[
     }
     if (groups.length === 0) continue;
     out.set(c.refdes, placeMeshGroups(groups, m, { at: c.at, rotation: c.rotation, side: c.side }, BOARD_T));
+  }
+
+  // Accessories (e.g. a card in its socket) join their component's groups.
+  const accessories = await loadAccessories();
+  const parsedByFile = new Map<string, MeshGroup[]>();
+  for (const c of board.components) {
+    for (const a of accessories.get(c.lcsc) ?? []) {
+      let groups = parsedByFile.get(a.obj);
+      if (groups === undefined) {
+        try {
+          groups = parseObjMesh((await loadAccessoryObj(a.obj)).toString('utf8'));
+        } catch {
+          groups = [];
+        }
+        parsedByFile.set(a.obj, groups);
+      }
+      if (groups.length === 0) continue;
+      const placed = placeMeshGroups(groups, a, { at: c.at, rotation: c.rotation, side: c.side }, BOARD_T);
+      out.set(c.refdes, [...(out.get(c.refdes) ?? []), ...placed]);
+    }
   }
   return out;
 }
@@ -567,7 +588,45 @@ async function handleApi(
         rotationDeg: m.rotationDeg,
       };
     }
-    sendJSON(res, 200, { models });
+    // Accessories (refdes → list) use the same placement fields as models.
+    const library = await loadAccessories();
+    const accessories: Record<string, Array<{
+      name: string;
+      objUrl: string;
+      originMm: Model3d['originMm'];
+      zMm: number;
+      rotationDeg: Model3d['rotationDeg'];
+    }>> = {};
+    for (const c of doc.board.components) {
+      const list = library.get(c.lcsc);
+      if (!list?.length) continue;
+      accessories[c.refdes] = list.map((a) => ({
+        name: a.name,
+        objUrl: `/api/accessory/${a.obj}`,
+        originMm: a.originMm,
+        zMm: a.zMm,
+        rotationDeg: a.rotationDeg,
+      }));
+    }
+    sendJSON(res, 200, { models, accessories });
+    return true;
+  }
+
+  if (method === 'GET' && pathname.startsWith('/api/accessory/')) {
+    const file = pathname.slice('/api/accessory/'.length);
+    if (!ACCESSORY_OBJ_RE.test(file)) {
+      sendJSON(res, 400, { ok: false, error: 'bad accessory file name' });
+      return true;
+    }
+    let data: Buffer;
+    try {
+      data = await loadAccessoryObj(file);
+    } catch {
+      sendJSON(res, 404, { ok: false, error: `no accessory ${file}` });
+      return true;
+    }
+    res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+    res.end(data);
     return true;
   }
 

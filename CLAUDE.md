@@ -102,6 +102,23 @@ openjdk` on macOS). `freerouting.jar` is auto-downloaded to
 `~/.flamingo/freerouting.jar` on first use. Routing a real board can take a
 minute or more — be patient and don't assume a hang.
 
+## Accessory 3D models
+
+`models/accessories/` holds 3D models for things that sit in or on a part but
+aren't on the board, e.g. a microSD card in its socket. `accessories.json` maps
+an LCSC id to its accessories, so every board using that part gets them. They
+show in the 3D viewer and the detail STEP export, but never reach the
+BOM/CPL/Gerbers.
+
+- Each entry: `name`, `obj` (file in that folder), `originMm` (footprint-local
+  x/y of the model's bbox center), `zMm` (model bottom above the board face),
+  `rotationDeg`. Same placement convention as EasyEDA models.
+- OBJs use the EasyEDA inline-material format (`newmtl N` / `Kd r g b` /
+  `endmtl`, `usemtl N`, faces `f a// b// c//`), millimetres, +Z up. Keep the
+  STEP source next to the OBJ.
+- `microsd-card` (11 x 15 x 1.0 mm, modelled in Fusion) is placed for the
+  TF-015 push-push socket, C113206.
+
 ## Caches
 
 - Part footprints/info: `~/.flamingo/parts/` (EasyEDA API responses).

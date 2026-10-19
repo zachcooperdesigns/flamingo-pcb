@@ -62,8 +62,27 @@ node packages/server/dist/cli.js serve board.flamingo
 #   … or, once the server package is linked, `npx flamingo serve board.flamingo`
 
 # Open the live view:
-open http://localhost:4242
+open http://flamingopcb.localhost:4242
 ```
+
+### One URL per project: `<project>.flamingopcb.localhost`
+
+Each `serve` registers itself (in `~/.flamingo/servers/`) under its board file's
+name, slugged (`puck_rev_A.flamingo` → `puck-rev-a`; override with `--name`), and
+takes the first free port from 4242 up unless `FLAMINGO_PORT` is set. A small
+router on port 80 maps `http://<project>.flamingopcb.localhost` to the right port
+(HTTP, the MCP stream and the `/ws` socket). `*.localhost` already resolves to
+this machine, so there's no DNS or `/etc/hosts` setup, and macOS lets a normal
+user bind port 80.
+
+```bash
+node packages/server/dist/cli.js router install   # once: LaunchAgent, runs at login
+node packages/server/dist/cli.js list             # running projects
+open http://flamingopcb.localhost                 # index of running projects
+node packages/server/dist/cli.js router uninstall # remove it
+```
+
+A project's MCP endpoint is then `http://<project>.flamingopcb.localhost/mcp`.
 
 Point Claude Code at the running server by dropping this `.mcp.json` in your
 project (it's already at the repo root):
@@ -71,7 +90,7 @@ project (it's already at the repo root):
 ```json
 {
   "mcpServers": {
-    "flamingo": { "type": "http", "url": "http://localhost:4242/mcp" }
+    "flamingo": { "type": "http", "url": "http://flamingopcb.localhost:4242/mcp" }
   }
 }
 ```
@@ -121,7 +140,7 @@ doing.
 
 ## MCP tools
 
-34 tools are served at `http://localhost:4242/mcp`:
+34 tools are served at `http://flamingopcb.localhost:4242/mcp`:
 
 | Group | Tools |
 | --- | --- |

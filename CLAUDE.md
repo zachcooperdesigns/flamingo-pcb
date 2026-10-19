@@ -12,11 +12,16 @@ npm install && npm run build
 node packages/server/dist/cli.js serve board.flamingo   # prints "Flamingo v0.1.0 serving …"
 ```
 
-- Serves the live UI at `http://localhost:4242`, streams board changes over
+- Serves the live UI at `http://flamingopcb.localhost:4242`, streams board changes over
   `/ws`, and exposes the MCP endpoint at `/mcp`.
 - `.mcp.json` (repo root) wires the `flamingo` MCP server to `/mcp` — its **34
   tools are available only while the server is running**. Start the server
   first, then use the tools.
+- Every `serve` registers in `~/.flamingo/servers/` under its board file's slug (or
+  `--name`) and takes the first free port from 4242 up (unless `FLAMINGO_PORT`).
+  `flamingo router` (port 80, installed as a LaunchAgent with `router install`)
+  serves each project at `http://<project>.flamingopcb.localhost`; `flamingo list`
+  shows them. Code: `packages/server/src/registry.ts`, `router.ts`.
 - Port override: `FLAMINGO_PORT`. Autoroute timeout override:
   `FLAMINGO_ROUTE_TIMEOUT_MS` (default 300000).
 

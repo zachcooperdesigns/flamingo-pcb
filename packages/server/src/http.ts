@@ -931,6 +931,10 @@ export function startServer(
   const uiDistDir = opts.uiDistDir ?? UI_DIST;
   const server = http.createServer(makeRequestListener(ctx, uiDistDir));
   const wss = attachWebSocket(doc, server);
+  // ws re-emits the http server's errors on the WebSocketServer; a listen error
+  // (e.g. EADDRINUSE, which the CLI retries on the next port) is already
+  // surfaced through the rejection below, so don't let it crash the process.
+  wss.on('error', () => {});
 
   return new Promise((resolve, reject) => {
     server.once('error', reject);

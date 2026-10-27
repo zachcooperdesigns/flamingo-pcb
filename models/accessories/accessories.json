@@ -1,0 +1,11 @@
+{
+  "C113206": [
+    {
+      "name": "microSD card",
+      "obj": "microsd-card.obj",
+      "originMm": { "x": -0.79, "y": -2.2 },
+      "zMm": 0.55,
+      "rotationDeg": { "x": 0, "y": 0, "z": 0 }
+    }
+  ]
+}

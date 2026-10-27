@@ -12,11 +12,16 @@ npm install && npm run build
 node packages/server/dist/cli.js serve board.flamingo   # prints "Flamingo v0.1.0 serving …"
 ```
 
-- Serves the live UI at `http://localhost:4242`, streams board changes over
+- Serves the live UI at `http://flamingopcb.localhost:4242`, streams board changes over
   `/ws`, and exposes the MCP endpoint at `/mcp`.
 - `.mcp.json` (repo root) wires the `flamingo` MCP server to `/mcp` — its **34
   tools are available only while the server is running**. Start the server
   first, then use the tools.
+- Every `serve` registers in `~/.flamingo/servers/` under its board file's slug (or
+  `--name`) and takes the first free port from 4242 up (unless `FLAMINGO_PORT`).
+  `flamingo router` (port 80, installed as a LaunchAgent with `router install`)
+  serves each project at `http://<project>.flamingopcb.localhost`; `flamingo list`
+  shows them. Code: `packages/server/src/registry.ts`, `router.ts`.
 - Port override: `FLAMINGO_PORT`. Autoroute timeout override:
   `FLAMINGO_ROUTE_TIMEOUT_MS` (default 300000).
 
@@ -101,6 +106,23 @@ always confirm stock + pads with `parts_get` before placing.
 openjdk` on macOS). `freerouting.jar` is auto-downloaded to
 `~/.flamingo/freerouting.jar` on first use. Routing a real board can take a
 minute or more — be patient and don't assume a hang.
+
+## Accessory 3D models
+
+`models/accessories/` holds 3D models for things that sit in or on a part but
+aren't on the board, e.g. a microSD card in its socket. `accessories.json` maps
+an LCSC id to its accessories, so every board using that part gets them. They
+show in the 3D viewer and the detail STEP export, but never reach the
+BOM/CPL/Gerbers.
+
+- Each entry: `name`, `obj` (file in that folder), `originMm` (footprint-local
+  x/y of the model's bbox center), `zMm` (model bottom above the board face),
+  `rotationDeg`. Same placement convention as EasyEDA models.
+- OBJs use the EasyEDA inline-material format (`newmtl N` / `Kd r g b` /
+  `endmtl`, `usemtl N`, faces `f a// b// c//`), millimetres, +Z up. Keep the
+  STEP source next to the OBJ.
+- `microsd-card` (11 x 15 x 1.0 mm, modelled in Fusion) is placed for the
+  TF-015 push-push socket, C113206.
 
 ## Caches
 

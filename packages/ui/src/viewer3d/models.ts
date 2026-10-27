@@ -169,6 +169,9 @@ export interface ModelManager {
 
 export function createModelManager(): ModelManager {
   let manifest: Record<string, ModelEntry> | null = null;
+  // Accessories (e.g. a card in its socket), refdes → entries. `uuid` holds
+  // the objUrl so they share the geometry cache with part models.
+  let accessories: Record<string, ModelEntry[]> = {};
   let manifestState: 'idle' | 'loading' | 'ready' | 'absent' = 'idle';
   const geomCache = new Map<string, THREE.Object3D>(); // uuid -> parsed OBJ (prototype)
   const loading = new Set<string>();
@@ -181,8 +184,17 @@ export function createModelManager(): ModelManager {
       try {
         const res = await fetch('/api/models');
         if (!res.ok) throw new Error(String(res.status));
-        const body = (await res.json()) as { models?: Record<string, ModelEntry> };
+        const body = (await res.json()) as {
+          models?: Record<string, ModelEntry>;
+          accessories?: Record<string, Array<Omit<ModelEntry, 'uuid'>>>;
+        };
         manifest = body.models ?? {};
+        accessories = Object.fromEntries(
+          Object.entries(body.accessories ?? {}).map(([refdes, list]) => [
+            refdes,
+            list.map((a) => ({ ...a, uuid: a.objUrl })),
+          ]),
+        );
         manifestState = 'ready';
         if (!disposed) onLoaded();
       } catch {
@@ -225,6 +237,11 @@ export function createModelManager(): ModelManager {
         if (entry) ensureGeometry(entry, onLoaded);
         const box = componentCourtyardBox(comp);
         if (box) root.add(box);
+      }
+      for (const acc of accessories[comp.refdes] ?? []) {
+        const accProto = geomCache.get(acc.uuid);
+        if (accProto) root.add(composeTransform(accProto.clone(), acc, comp));
+        else ensureGeometry(acc, onLoaded);
       }
     }
     return root;
